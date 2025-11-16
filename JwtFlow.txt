@@ -1,0 +1,54 @@
+
+to  encript user.setPassWord(passwordEncoder.encode(user.getPassWord()));
+
+
+Generate the Token
+------------------
+
+Controller Layer:
+
+1.create controller for Authentication(AuthController) with AuthDTO(UserName, PassWord)
+
+2.Autowired AuthenticationManager and create a object of UsernamePasswordAuthenticationToken and pass Username & password from AuthDTO
+and return to JWTUtil class for generate the token
+
+JwtUtil.generateToken(String username):
+
+1.use Jwts from io.jsonwebtoken.Jwts package
+ Builder -> SetSubject(username)->setIssuesAt(new Date())-> setExpiration(new Date(system.currentTimeMillis() + 1000*60*30))
+ -> signWithKey(key,keyAlrogrithm)->compact()
+
+
+ Validate token:
+
+ 1.Create a filter package and create with JwtFilter name
+ 2.extends the class with oncePerRequestFilter(abstract) and implement "doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)"
+ 3. get the authHeader from the request.header("Authorization")
+ 4. get the value after from 7 to avoid "Bearer" ->authHeader.contains("Bearer ")
+ 5. extract userName from the token
+ 6. create claims using the below
+ Claims extractClaims(String token) {
+         return Jwts.parserBuilder()
+                 .setSigningKey(key)
+                 .build()
+                 .parseClaimsJws(token)
+                 .getBody();
+ 7. check username is not null and securityContextHolder.getContext().getAuthentication() should be null
+ 8. get the user details using the "userDetailsService" with use of method "loadByUsername" ->customUserService.loadUserByUsername(userName)
+ 9. validate the token -> jwtUtil.validateToken(userName, userDetails, token
+ 10. Username from the step 5 and UserDetailsService username from step 8 is same or not
+ and check the token expiration-> userName.equals(userDetails.getUsername()) && !isTokeExpired(token
+ 11. check the token isExpire or not -> extractClaims(token).getExpiration().before(new Date());
+ 12. set the user details,credential and Authorization in new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+ 13. set the extra details with ->setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+ 14. set the user detail in the security context holder -> SecurityContextHolder.getContext().setAuthentication(authtoken);
+ 15.  Add this jwt filter in filter chain -> filterChain.doFilter(request,response);
+ 16. add this filter in securityConfig class in SecurityFilterChain method ->.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+
+
+
+
+
+
+
+
